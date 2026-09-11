@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #222222;
+    font-family: sans-serif;
+    color: #ffffff;
+  }
+  #setup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  #time-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0.4em;
+  }
+  #time-inputs input {
+    width: 2.3em;
+    font-size: 1.5em;
+    padding: 0.3em 0em;
+    text-align: center;
+  }
+  #start-row {
+    margin-top: 2em;
+  }
+  #start-btn {
+    font-size: 1.2em;
+    padding: 0.4em 1em;
+    width: 210px;
+    background-color: #D6BD98;
+  }
+  #presets-row {
+    margin-top: 2em;
+  }
+  #presets-row button {
+    margin: 0.2em;
+    padding: 0.5em 1em;
+    background-color: #1A3636;
+    color: #ffffff;
+  }
+  #cover {
+    position: fixed;
+    inset: 0;
+    background: #000000;
+    pointer-events: none;
+    -webkit-mask-image: conic-gradient(#000 0deg, transparent 0deg);
+    mask-image: conic-gradient(#000 0deg, transparent 0deg);
+  }
+  #refresh-btn {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  #refresh-btn svg {
+    width: 80px;
+    height: 80px;
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2;
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <section id="setup">
+    <div id="time-inputs">
+      <input type="number" id="minute" min="0" value="0"> 분
+      <input type="number" id="second" min="0" value="1"> 초
+    </div>
+    <div id="start-row">
+      <button type="button" id="start-btn">시작</button>
+    </div>
+    <div id="presets-row">
+      <button type="button" data-h="0" data-m="10" data-s="0">10분</button>
+      <button type="button" data-h="0" data-m="9" data-s="30">9분 30초</button>
+      <button type="button" data-h="0" data-m="9" data-s="0">9분</button>
+      <button type="button" data-h="0" data-m="8" data-s="30">8분 30초</button>
+      <button type="button" data-h="0" data-m="8" data-s="0">8분</button>
+    </div>
+  </section>
+
+  <div id="cover"></div>
+
+  <button type="button" id="refresh-btn" aria-label="새로고침">
+    <svg id="refresh-icon" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+      <polyline points="20 4 20 11 13 11" />
+    </svg>
+  </button>
+</main>
+
+<script>
+  const minuteInput = document.getElementById('minute');
+  const secondInput = document.getElementById('second');
+  const setup = document.getElementById('setup');
+  const cover = document.getElementById('cover');
+  const startBtn = document.getElementById('start-btn');
+  const presetButtons = document.querySelectorAll('#presets-row button');
+  const refreshBtn = document.getElementById('refresh-btn');
+  const refreshIcon = document.getElementById('refresh-icon');
+
+  refreshBtn.addEventListener('click', function () {
+    location.reload();
+  });
+
+  presetButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      minuteInput.value = btn.getAttribute('data-m');
+      secondInput.value = btn.getAttribute('data-s');
+    });
+  });
+
+  startBtn.addEventListener('click', function () {
+    const totalMs =
+      ((parseInt(minuteInput.value, 10) || 0) * 60 +
+        (parseInt(secondInput.value, 10) || 0)) * 1000;
+
+    if (totalMs <= 0) return;
+
+    setup.style.display = 'none';
+
+    const startTime = Date.now();
+
+    const timerId = setInterval(function () {
+      const elapsed = Date.now() - startTime;
+      const percent = Math.min(elapsed / totalMs, 1);
+      const angle = percent * 360;
+
+      cover.style.webkitMaskImage =
+        'conic-gradient(#000 ' + angle + 'deg, transparent ' + angle + 'deg)';
+      cover.style.maskImage =
+        'conic-gradient(#000 ' + angle + 'deg, transparent ' + angle + 'deg)';
+
+      if (percent >= 1) {
+        clearInterval(timerId);
+        refreshBtn.style.display = 'block';
+
+        let isWhite = true;
+        setInterval(function () {
+          isWhite = !isWhite;
+          refreshIcon.style.stroke = isWhite ? '#ffffff' : '#444444';
+        }, 1000);
+      }
+    }, 50);
+  });
+</script>
+
+</body>
+</html>

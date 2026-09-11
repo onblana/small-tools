@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alarm</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #222222;
+    font-family: sans-serif;
+    color: #ffffff;
+  }
+  #setup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  #current-time {
+    font-size: 1.5em;
+  }
+  #time-inputs {
+    margin-top: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0.4em;
+  }
+  #time-inputs input {
+    width: 2.3em;
+    font-size: 1.2em;
+    padding: 0.3em 0em;
+    text-align: center;
+  }
+  #plus-ten-btn {
+    font-size: 1.2em;
+    padding: 0.3em 0.6em;
+    margin-left: 10px;
+    background-color: #1A3636;
+    color: #ffffff;
+  }
+  #start-row {
+    margin-top: 1em;
+  }
+  #start-btn {
+    font-size: 1.2em;
+    padding: 0.4em 1em;
+    margin-top: 1em;
+    width: 260px;
+    background-color: #D6BD98;
+  }
+  #start-btn:disabled {
+    background-color: #D6BD9833;
+    cursor: not-allowed;
+  }
+  #cover {
+    position: fixed;
+    inset: 0;
+    background: #000000;
+    pointer-events: none;
+    -webkit-mask-image: conic-gradient(#000 0deg, transparent 0deg);
+    mask-image: conic-gradient(#000 0deg, transparent 0deg);
+  }
+  #refresh-btn {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  #refresh-btn svg {
+    width: 80px;
+    height: 80px;
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2;
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <section id="setup">
+    <time id="current-time">지금은 00시 00분 00초</time>
+    <div id="time-inputs">
+      <input type="number" id="target-hour" min="0" max="23" value="0"> 시
+      <input type="number" id="target-minute" min="0" max="59" value="0"> 분
+      <button type="button" id="plus-ten-btn">+10분</button>
+    </div>
+    <div id="start-row">
+      <button type="button" id="start-btn">시작</button>
+    </div>
+  </section>
+
+  <div id="cover"></div>
+
+  <button type="button" id="refresh-btn" aria-label="새로고침">
+    <svg id="refresh-icon" viewBox="0 0 24 24">
+      <path d="M20 11a8 8 0 1 0-2.34 5.66" />
+      <polyline points="20 4 20 11 13 11" />
+    </svg>
+  </button>
+</main>
+
+<script>
+  const currentTimeEl = document.getElementById('current-time');
+  const hourInput = document.getElementById('target-hour');
+  const minuteInput = document.getElementById('target-minute');
+  const setup = document.getElementById('setup');
+  const cover = document.getElementById('cover');
+  const startBtn = document.getElementById('start-btn');
+  const plusTenBtn = document.getElementById('plus-ten-btn');
+  const refreshBtn = document.getElementById('refresh-btn');
+  const refreshIcon = document.getElementById('refresh-icon');
+
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function formatNow() {
+    const now = new Date();
+    const h = pad(now.getHours());
+    const m = pad(now.getMinutes());
+    const s = pad(now.getSeconds());
+    return {
+      text: '지금은 ' +h + '시 ' + m + '분 ' + s + '초 ',
+      isoTime: h + ':' + m + ':' + s,
+      hour: now.getHours(),
+      minute: now.getMinutes(),
+      second: now.getSeconds()
+    };
+  }
+
+  function renderCurrentTime() {
+    const now = formatNow();
+    currentTimeEl.textContent = now.text;
+    currentTimeEl.setAttribute('datetime', now.isoTime);
+  }
+
+  function buildTargetToday() {
+    const target = new Date();
+    target.setHours(parseInt(hourInput.value, 10) || 0);
+    target.setMinutes(parseInt(minuteInput.value, 10) || 0);
+    target.setSeconds(0);
+    target.setMilliseconds(0);
+    return target;
+  }
+
+  function validateTarget() {
+    startBtn.disabled = buildTargetToday() <= new Date();
+  }
+
+  renderCurrentTime();
+
+  const initialTarget = new Date();
+  initialTarget.setSeconds(0, 0);
+  const addMinutes = 10 - (initialTarget.getMinutes() % 10);
+  initialTarget.setMinutes(initialTarget.getMinutes() + addMinutes);
+  hourInput.value = initialTarget.getHours();
+  minuteInput.value = initialTarget.getMinutes();
+  validateTarget();
+
+  [hourInput, minuteInput].forEach(function (input) {
+    input.addEventListener('input', validateTarget);
+  });
+
+  plusTenBtn.addEventListener('click', function () {
+    let h = parseInt(hourInput.value, 10) || 0;
+    let m = parseInt(minuteInput.value, 10) || 0;
+    m += 10;
+    if (m >= 60) {
+      m -= 60;
+      h = (h + 1) % 24;
+    }
+    hourInput.value = h;
+    minuteInput.value = m;
+    validateTarget();
+  });
+
+  const clockTickId = setInterval(function () {
+    renderCurrentTime();
+    validateTarget();
+  }, 1000);
+
+  refreshBtn.addEventListener('click', function () {
+    location.reload();
+  });
+
+  startBtn.addEventListener('click', function () {
+    if (startBtn.disabled) return;
+
+    clearInterval(clockTickId);
+
+    const now = new Date();
+    const totalMs = buildTargetToday() - now;
+
+    setup.style.display = 'none';
+
+    const startTime = Date.now();
+
+    const timerId = setInterval(function () {
+      const elapsed = Date.now() - startTime;
+      const percent = Math.min(elapsed / totalMs, 1);
+      const angle = percent * 360;
+
+      cover.style.webkitMaskImage =
+        'conic-gradient(#000 ' + angle + 'deg, transparent ' + angle + 'deg)';
+      cover.style.maskImage =
+        'conic-gradient(#000 ' + angle + 'deg, transparent ' + angle + 'deg)';
+
+      if (percent >= 1) {
+        clearInterval(timerId);
+        refreshBtn.style.display = 'block';
+
+        let isWhite = true;
+        setInterval(function () {
+          isWhite = !isWhite;
+          refreshIcon.style.stroke = isWhite ? '#ffffff' : '#444444';
+        }, 1000);
+      }
+    }, 50);
+  });
+</script>
+
+</body>
+</html>
